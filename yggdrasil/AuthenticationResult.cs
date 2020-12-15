@@ -1,4 +1,4 @@
-﻿using hu.hunluxlauncher.libraries.launcher;
+﻿using hu.hunluxlauncher.libraries.auth;
 using System;
 using System.Net;
 

@@ -2,86 +2,50 @@
 using System.Text;
 using System.Net;
 using System.Net.Http;
-using Newtonsoft.Json.Linq;
-using hu.hunluxlauncher.libraries.launcher;
-using Newtonsoft.Json;
+using System.Text.Json;
 
 namespace hu.hunluxlauncher.libraries.auth.yggdrasil
 {
     public class Authenticator
     {
         #region Declarations
-        private HttpClient _Client;
-        private Guid _ClientToken;
-        readonly String AUTH_SERVER = "https://authserver.mojang.com";
+        private Guid ClientToken;
+        private string UserAgent;
+        readonly string AUTH_SERVER = "https://authserver.mojang.com";
         #endregion
 
         #region Global functions
-        public Authenticator(Guid clientToken)
+        public Authenticator(string user_agent, Guid clientToken)
         {
-            _Client = new HttpClient();
-            _ClientToken = clientToken;
+            UserAgent = user_agent;
+            ClientToken = clientToken;
         }
 
-        public Authenticator() : this(Guid.NewGuid()) { }
+        public Authenticator(string user_agent) : this(user_agent, Guid.NewGuid()) { }
 
         public Guid GetClientToken()
         {
-            return _ClientToken;
+            return ClientToken;
         }
         #endregion
 
         #region Authenticate
         public AuthenticationResult Authenticate(string usernameOrEmailAddress, string password, AgentType agentType, int agentVersion)
         {
-            AuthenticationResult result = null;
-
-            JObject payload = new JObject();
-            JObject agent = new JObject();
-
-            agent["name"] = (agentType == AgentType.Minecraft ? "Minecraft" : "Scrolls");
-            agent["version"] = agentVersion;
-
-            payload["agent"] = agent;
-            payload["username"] = usernameOrEmailAddress;
-            payload["password"] = password;
-            payload["clientToken"] = _ClientToken.ToString();
-            payload["requestUser"] = true;
-
-            HttpContent content = new StringContent(payload.ToString(), Encoding.UTF8, "application/json");
-            HttpResponseMessage httpResponse = _Client.PostAsync(AUTH_SERVER + "/authenticate", content).Result;
-            JObject response = JObject.Parse(httpResponse.Content.ReadAsStringAsync().Result);
-
-            if (httpResponse.StatusCode == HttpStatusCode.OK)
+            AuthenticationRequest request = new AuthenticationRequest
             {
-                Profile selectedProfile = JsonConvert.DeserializeObject<Profile>(response["selectedProfile"].ToString());
-
-                string profileName = (string)selectedProfile.Name;
-                Guid profileId = Guid.Parse((string)selectedProfile.Id);
-                bool isLegacyProfile = false;
-
-                if (selectedProfile.Legacy)
+                Agent = new Agent
                 {
-                    isLegacyProfile = selectedProfile.Legacy;
-                }
+                    Name = agentType.ToString(),
+                    Version = agentVersion
+                },
+                Username = usernameOrEmailAddress,
+                Password = password,
+                ClientToken = ClientToken.ToString(),
+                RequestUser = true
+            };
 
-                string accessToken = response["accessToken"].ToString();
-
-                result = new AuthenticationResult(accessToken, profileName, profileId, isLegacyProfile, selectedProfile);
-            }
-            else
-            {
-                string error = (string)response["error"];
-                string errorMessage = (string)response["errorMessage"];
-                string cause = null;
-
-                if (response["cause"] != null)
-                {
-                    cause = (string)response["cause"];
-                }
-
-                result = new AuthenticationResult(httpResponse.StatusCode, error, errorMessage, cause);
-            }
+            AuthenticationResult result = JsonSerializer.Deserialize<AuthenticationResult>(NetHandler.SendPostRequest(new Uri(AUTH_SERVER + "/authenticate"), UserAgent, "application/json", JsonSerializer.Serialize(request)));
 
             return result;
         }
@@ -90,37 +54,14 @@ namespace hu.hunluxlauncher.libraries.auth.yggdrasil
         #region Refresh
         public RefreshResult Refresh(string accessToken)
         {
-            RefreshResult result = null;
-
-            JObject payload = new JObject();
-
-            payload["accessToken"] = accessToken;
-            payload["clientToken"] = _ClientToken.ToString();
-
-            HttpContent content = new StringContent(payload.ToString(), Encoding.UTF8, "application/json");
-            HttpResponseMessage httpResponse = _Client.PostAsync(AUTH_SERVER + "/refresh", content).Result;
-            JObject response = JObject.Parse(httpResponse.Content.ReadAsStringAsync().Result);
-
-            if (httpResponse.StatusCode == HttpStatusCode.OK)
+            RefreshRequest request = new RefreshRequest
             {
-                string newAccessToken = response["accessToken"].ToString();
+                AccessToken = accessToken,
+                ClientToken = ClientToken.ToString()
+            };
 
-                result = new RefreshResult(newAccessToken);
-            }
-            else
-            {
-                string error = (string)response["error"];
-                string errorMessage = (string)response["errorMessage"];
-                string cause = null;
-
-                if (response["cause"] != null)
-                {
-                    cause = (string)response["cause"];
-                }
-
-                result = new RefreshResult(httpResponse.StatusCode, error, errorMessage, cause);
-            }
-
+            RefreshResult result = JsonSerializer.Deserialize<RefreshResult>(NetHandler.SendPostRequest(new Uri(AUTH_SERVER + "/refresh"), UserAgent, "application/json", JsonSerializer.Serialize(request)));
+            
             return result;
         }
         #endregion
@@ -128,74 +69,28 @@ namespace hu.hunluxlauncher.libraries.auth.yggdrasil
         #region Validate
         public ValidationResult Validate(string accessToken)
         {
-            ValidationResult result = null;
-
-            JObject payload = new JObject();
-
-            payload["accessToken"] = accessToken;
-            payload["clientToken"] = _ClientToken.ToString();
-
-            HttpContent content = new StringContent(payload.ToString(), Encoding.UTF8, "application/json");
-            HttpResponseMessage httpResponse = _Client.PostAsync(AUTH_SERVER + "/validate", content).Result;
-
-            if (httpResponse.StatusCode == HttpStatusCode.NoContent)
+            ValidationRequest request = new()
             {
-                result = new ValidationResult(true);
-            }
-            else
-            {
-                JObject response = JObject.Parse(httpResponse.Content.ReadAsStringAsync().Result);
+                AccessToken = accessToken,
+                ClientToken = ClientToken.ToString()
+            };
 
-                string error = (string)response["error"];
-                string errorMessage = (string)response["errorMessage"];
-                string cause = null;
-
-                if (response["cause"] != null)
-                {
-                    cause = (string)response["cause"];
-                }
-
-                result = new ValidationResult(httpResponse.StatusCode, error, errorMessage, cause);
-            }
+            ValidationResult result = JsonSerializer.Deserialize<ValidationResult>(NetHandler.SendPostRequest(new Uri(AUTH_SERVER + "/validate"), UserAgent,"application/json", JsonSerializer.Serialize(request)));
 
             return result;
         }
         #endregion
 
         #region Signout
-        public InvalidationResult Signout(string usernameOrEmailAddress, string password)
+        public bool Signout(string usernameOrEmailAddress, string password)
         {
-            InvalidationResult result = null;
-
-            JObject payload = new JObject();
-
-            payload["username"] = usernameOrEmailAddress;
-            payload["password"] = password;
-
-            HttpContent content = new StringContent(payload.ToString(), Encoding.UTF8, "application/json");
-            HttpResponseMessage httpResponse = _Client.PostAsync(AUTH_SERVER + "/signout", content).Result;
-
-            if (httpResponse.StatusCode == HttpStatusCode.NoContent)
+            SignoutRequest request = new SignoutRequest
             {
-                result = new InvalidationResult(true);
-            }
-            else
-            {
-                JObject response = JObject.Parse(httpResponse.Content.ReadAsStringAsync().Result);
+                Username = usernameOrEmailAddress,
+                Password = password
+            };
 
-                string error = (string)response["error"];
-                string errorMessage = (string)response["errorMessage"];
-                string cause = null;
-
-                if (response["cause"] != null)
-                {
-                    cause = (string)response["cause"];
-                }
-
-                result = new InvalidationResult(httpResponse.StatusCode, error, errorMessage, cause);
-            }
-
-            return result;
+            return HttpStatusCode.OK == NetHandler.GetPostRequestStatusCode(new Uri(AUTH_SERVER +"/signout"), UserAgent, "application/json", JsonSerializer.Serialize(request));
         }
 
         #endregion
@@ -203,35 +98,14 @@ namespace hu.hunluxlauncher.libraries.auth.yggdrasil
         #region Invalidate
         public InvalidationResult Invalidate(string accessToken)
         {
-            InvalidationResult result = null;
 
-            JObject payload = new JObject();
-
-            payload["accessToken"] = accessToken;
-            payload["clientToken"] = _ClientToken.ToString();
-
-            HttpContent content = new StringContent(payload.ToString(), Encoding.UTF8, "application/json");
-            HttpResponseMessage httpResponse = _Client.PostAsync(AUTH_SERVER + "/invalidate", content).Result;
-
-            if (httpResponse.StatusCode == HttpStatusCode.NoContent)
+            InvalidationRequest request = new()
             {
-                result = new InvalidationResult(true);
-            }
-            else
-            {
-                JObject response = JObject.Parse(httpResponse.Content.ReadAsStringAsync().Result);
+                AccessToken = accessToken,
+                ClientToken = ClientToken.ToString()
+            };
 
-                string error = (string)response["error"];
-                string errorMessage = (string)response["errorMessage"];
-                string cause = null;
-
-                if (response["cause"] != null)
-                {
-                    cause = (string)response["cause"];
-                }
-
-                result = new InvalidationResult(httpResponse.StatusCode, error, errorMessage, cause);
-            }
+            InvalidationResult result = JsonSerializer.Deserialize<InvalidationResult>(NetHandler.SendPostRequest(new Uri(AUTH_SERVER + "/validate"), UserAgent, "application/json", JsonSerializer.Serialize(request)));
 
             return result;
         }
