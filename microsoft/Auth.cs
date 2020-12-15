@@ -1,13 +1,10 @@
-﻿using CefSharp.Wpf;
+﻿using hu.czompisoftware.libraries.general;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Controls;
 
 namespace hu.hunluxlauncher.libraries.auth.microsoft
 {
@@ -15,307 +12,208 @@ namespace hu.hunluxlauncher.libraries.auth.microsoft
     public class Auth
     {
 
-        public void initialize(Uri location)
+        #region Properties
+        private AuthenticationSettings AuthSettings { get; }
+        #endregion
+
+        #region Global methods
+        public Auth(AuthenticationSettings auth_settings)
         {
-            /*
-             * https://login.live.com/oauth20_authorize.srf
-             * ?client_id=00000000402b5328
-             * &response_type=code
-             * &redirect_uri=https%3A%2F%2Flogin.live.com%2Foauth20_desktop.srf
-             * &scope=service%3A%3Auser.auth.xboxlive.com%3A%3AMBI_SSL
-            */
-            var client_id = "00000000402b5328";
-            var response_type = "code";
-            var redirect_uri = "https%3A%2F%2Flogin.live.com%2Foauth20_desktop.srf";
-            var scope = "service%3A%3Auser.auth.xboxlive.com%3A%3AMBI_SSL";
-            webView.Load(AuthLinks.AuthTokenLink);
-            webView.BrowserSettings.Javascript = CefSharp.CefState.Enabled;
-            win.Content = webView;
-            win.Title = "Login with Microsoft";
-            win.Width = 400;
-            win.Height = 600;
-            win.Show();
-            // listen to end oauth flow
-            webView.AddressChanged += (s,a)=> {
-                var nurl = a.NewValue.ToString();
-                if (nurl != AuthLinks.AuthTokenLink && nurl.StartsWith(AuthLinks.RedirectUrlSuffix))
+            AuthSettings = auth_settings;
+        }
+        #endregion
+
+        #region Authenticate with Microsoft
+
+        #region LogoutInit
+        /// <summary>
+        /// Authenticate with Microsoft Part #1<br/>
+        /// This function is the first one that you have to call and you need to pass the return value to the user to be able to log in to their 
+        /// Microsoft account. After you done that, you need to monitor the window/webbrowser that this method's <see cref="Uri"/> is passed to,
+        /// because otherwise you cannot retrieve the <b>authorization_code</b> and without it, you cannot continue the authentication process.
+        /// </summary>
+        /// <param name="request">Leave it <b>null</b> if you'd like to use the default request datas that are present on the official <b>Minecraft Launcher</b> as well.</param>
+        /// <returns>With an <see cref="Uri"/> based on <paramref name="request"/> data. See <seealso cref="AuthorizeRequest"/> for more info.</returns>
+        public Uri LogoutInit(account.AuthorizeRequest logoutRequest = null, account.AuthorizeRequest loginRequest = null)
+        {
+            
+            if (logoutRequest == null)
+            {
+                logoutRequest = new account.AuthorizeRequest
                 {
-                    String authCode = nurl.Substring(nurl.IndexOf("=") + 1, nurl.IndexOf("&"));
-                    // once we got the auth code, we can turn it into a oauth token
-                    Console.WriteLine("authCode: " + authCode); // TODO debug
-                    AcquireAccessToken(authCode);
-                }
+                    ClientId = AuthSettings.ClientId,
+                    RedirectUri = AuthSettings.RedirectUri
+                };
+            }
+            return new Uri($"{AuthLinks.LogoutUrl}?{logoutRequest.ToFormRequest<account.AuthorizeRequest>()}");
+        }
+        #endregion
+        
+        #region LoginInit
+        /// <summary>
+        /// Authenticate with Microsoft Part #1<br/>
+        /// This function is the first one that you have to call and you need to pass the return value to the user to be able to log in to their 
+        /// Microsoft account. After you done that, you need to monitor the window/webbrowser that this method's <see cref="Uri"/> is passed to,
+        /// because otherwise you cannot retrieve the <b>authorization_code</b> and without it, you cannot continue the authentication process.
+        /// </summary>
+        /// <param name="request">Leave it <b>null</b> if you'd like to use the default request datas that are present on the official <b>Minecraft Launcher</b> as well.</param>
+        /// <returns>With an <see cref="Uri"/> based on <paramref name="request"/> data. See <seealso cref="AuthorizeRequest"/> for more info.</returns>
+        public Uri LoginInit(account.AuthorizeRequest request = null)
+        {
+            if (request == null)
+            {
+                request = new account.AuthorizeRequest
+                {
+                    ClientId = AuthSettings.ClientId,
+                    ResponseType = "code",
+                    RedirectUri = AuthSettings.RedirectUri,
+                    Scope = "service::user.auth.xboxlive.com::MBI_SSL",
+                };
+            }
+            return new Uri($"{AuthLinks.LoginUrl}?{request.ToFormRequest<account.AuthorizeRequest>()}");
+        }
+        #endregion
+
+        #region CatchAuthorizationToken
+        /// <summary>
+        /// Authenticate with Microsoft Part #2<br/>
+        /// Now we got the <b>authorization_code</b>, so we can get the <see cref="TokenResponse"/>.
+        /// </summary>
+        /// <param name="uri">After successfull authentication, we will have this <see cref="Uri"/> to get the <b>authorization_code</b> from.</param>
+        /// <returns>AccessToken from <see cref="TokenResponse"/></returns>
+        public account.TokenResponse CatchAuthorizationToken(Uri uri)
+        {
+            if (uri.ToString().StartsWith(AuthLinks.RedirectUrlSuffix))
+            {
+                var res = GetAuthorizationToken(uri);
+                return res;
+            }
+            return null;
+        }
+        #endregion
+
+        #region GetAuthorizationToken
+        /// <summary>
+        /// Authenticate with Microsoft Part #3<br/>
+        /// Finally, with this method, the authentication is complete. This is private, because it is called in <seealso cref="CatchAuthorizationToken(Uri)"/>.
+        /// Probably that function will pass the entire <see cref="TokenResponse"/> to return, so you can do whatever you want to do with it.
+        /// </summary>
+        /// <param name="uri">After we got the <b>authorization_code</b> from <see cref="Uri"/>, we navigate to <see cref="AuthLinks.AuthTokenLink"/> <see cref="Uri"/> to get the <see cref="TokenResponse"/> from it.</param>
+        /// <returns></returns>
+        private account.TokenResponse GetAuthorizationToken(Uri uri)
+        {
+            var get_data = (uri.Query.Trim('?').Contains("&") ? uri.Query.Trim('?').Split("&") : new string[] { uri.Query }).Select(x => new KeyValuePair<string, string>(x.Split("=")[0], x.Split("=")[1])).ToDictionary(x => x.Key, x => x.Value);
+            account.AuthorizeRequest data = new()
+            {
+                ClientId = AuthSettings.ClientId,
+                Code = get_data["code"],
+                GrantType = "authorization_code",
+                RedirectUri = AuthSettings.RedirectUri,
+                Scope = "service::user.auth.xboxlive.com::MBI_SSL"
+            };
+            return JsonSerializer.Deserialize<account.TokenResponse>(NetHandler.SendPostRequest(AuthLinks.AuthTokenLink, AuthSettings.UserAgent, "application/x-www-form-urlencoded", data.ToFormRequest<account.AuthorizeRequest>()));
+        }
+        #endregion
+
+        #region RefreshTokens
+        /// <summary>
+        /// Refresh <see cref="TokenResponse"/> tokens.<br/>
+        /// This method will refresh <see cref="TokenResponse"/> by a help of <paramref name="refresh_token"/>.
+        /// </summary>
+        /// <param name="refresh_token">Refresh token from <see cref="CatchAuthorizationToken(Uri)"/>.</param>
+        /// <returns>AccessToken from <see cref="TokenResponse"/></returns>
+        public account.TokenResponse RefreshTokens(string refresh_token)
+        {
+            account.AuthorizeRequest data = new()
+            {
+                ClientId = AuthSettings.ClientId,
+                Code = refresh_token,
+                GrantType = "refresh_token",
+                RedirectUri = AuthSettings.RedirectUri,
+                Scope = "service::user.auth.xboxlive.com::MBI_SSL"
+            };
+            return JsonSerializer.Deserialize<account.TokenResponse>(NetHandler.SendPostRequest(AuthLinks.AuthTokenLink, AuthSettings.UserAgent, "application/x-www-form-urlencoded", data.ToFormRequest<account.AuthorizeRequest>()));
+        }
+        #endregion
+
+        #endregion
+
+        #region Authenticate with Xbox Live
+
+        #region XboxLiveAuthenticate
+        /// <summary>
+        /// Authenticate with Xbox Live #1<br/>
+        /// Now you're able to authenticate with XBL via your <paramref name="access_token"/>.
+        /// </summary>
+        /// <param name="access_token">The AccessToken from <see cref="TokenResponse"/>.</param>
+        /// <returns></returns>
+        public xbox.TokenResponse XboxLiveAuthenticate(string access_token)
+        {
+            xbox.AuthenticationRequest request = new()
+            {
+                Properties = new xbox.AuthenticationProperties
+                {
+                    AuthMethod = xbox.AuthMethod.RPS,
+                    SiteName = "user.auth.xboxlive.com",
+                    RpsTicket = access_token
+                },
+                RelyingParty = "http://auth.xboxlive.com",
+                TokenType = xbox.TokenType.JWT
+            };
+            var rstr = JsonSerializer.Serialize(request);
+            Logger.Debug(rstr);
+            xbox.TokenResponse response = JsonSerializer.Deserialize<xbox.TokenResponse>(NetHandler.SendPostRequest(AuthLinks.XblAuthLink, AuthSettings.UserAgent, "application/json", rstr, "Accept", "application/json"));
+
+            return response;
+        }
+        #endregion
+
+        #region XSTSAuthenticate
+        /// <summary>
+        /// Authenticate with Xbox Live #2<br/>
+        /// After getting the <see cref="TokenResponse"/>, you'll be able to authenticate with XSTS.
+        /// </summary>
+        /// <param name="xbl_token">The Token value of <see cref="TokenResponse"/>.</param>
+        public xbox.TokenResponse XSTSAuthenticate(string xbl_token)
+        {
+            xbox.AuthenticationRequest request = new()
+            {
+                Properties = new xbox.AuthenticationProperties
+                {
+                    SandboxId = "RETAIL",
+                    UserTokens = new List<string>()
+                    {
+                        xbl_token
+                    }
+                },
+                RelyingParty = "rp://api.minecraftservices.com/",
+                TokenType = xbox.TokenType.JWT
             };
 
+            xbox.TokenResponse response = JsonSerializer.Deserialize<xbox.TokenResponse>(NetHandler.SendPostRequest(AuthLinks.XstsAuthLink, AuthSettings.UserAgent, "application/json", JsonSerializer.Serialize(request), "Accept", "application/json"));
+            
+            return response;
         }
+        #endregion
 
-        private void AcquireAccessToken(String authcode)
+        #endregion
+
+        #region Authenticate with Minecraft
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="user_hash">Use the 1st item's <b>UserHash</b> from array <see cref="xbox.TokenResponse.DisplayClaims"/> at <see cref="XboxLiveAuthenticate(string)"/>.</param>
+        /// <param name="xsts_token">Use <see cref="xbox.TokenResponse.Token"/> from <see cref="XSTSAuthenticate(string)"/>.</param>
+        public minecraft.Authenticate MinecraftAuthenticate(string user_hash, string xsts_token)
         {
-            try
+            minecraft.AuthenticateRequest request = new()
             {
-                Uri uri = new(AuthLinks.AuthTokenLink);
+                IdentityToken = $"XBL3.0 x={user_hash};{xsts_token}"
+            };
 
-                AuthTokenRequest data = new()
-                {
-                    ClientId = "00000000402b5328",
-                    Code = authcode,
-                    GrantType = "authorization_code",
-                    RedirectUri = "https://login.live.com/oauth20_desktop.srf",
-                    Scope = "service::user.auth.xboxlive.com::MBI_SSL"
-                };
-
-                HttpRequest request = HttpRequest.newBuilder(uri)
-                        .header("Content-Type", "application/x-www-form-urlencoded")
-                        .POST(ofFormData(data)).build();
-
-                HttpClient.newBuilder().build().sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenAccept(resp-> {
-                    if (resp.statusCode() >= 200 && resp.statusCode() < 300)
-                    {
-                        String body = resp.body();
-                        try
-                        {
-                            JSONObject jsonObject = (JSONObject)new JSONParser().parse(body);
-                            String accessToken = (String)jsonObject.get("access_token");
-                            System.out.println("accessToken: " + accessToken); // TODO debug
-                            acquireXBLToken(accessToken);
-                        }
-                        catch (ParseException e)
-                        {
-                            e.printStackTrace();
-                        }
-                    }
-                });
-            }
-            catch (URISyntaxException e)
-            {
-                e.printStackTrace();
-            }
+            minecraft.Authenticate response = JsonSerializer.Deserialize<minecraft.Authenticate>(NetHandler.SendPostRequest(AuthLinks.McLoginLink, AuthSettings.UserAgent, "application/json", JsonSerializer.Serialize(request), "Accept", "application/json"));
+            return response;
         }
-
-        private void acquireXBLToken(String accessToken)
-        {
-            try
-            {
-                Uri uri = new Uri(AuthLinks.XblAuthLink);
-
-                XBLToken data = new()
-                {
-                    Properties = new Dictionary<string, string> {
-                        { "AuthMethod", "RPS"},
-                        { "SiteName", "user.auth.xboxlive.com" },
-                        { "RpsTicket", accessToken }
-                    },
-                    RelyingParty = "http://auth.xboxlive.com",
-                    TokenType = "JWT"
-                };
-
-                HttpRequest request = HttpRequest.newBuilder(uri)
-                        .header("Content-Type", "application/json")
-                        .header("Accept", "application/json")
-                        .POST(JsonSerializer.Serialize<XBLToken>(data)).build();
-
-                HttpClient.newBuilder().build().sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenAccept(resp-> {
-                    if (resp.statusCode() >= 200 && resp.statusCode() < 300)
-                    {
-                        String body = resp.body();
-                        try
-                        {
-                            JSONObject jsonObject = (JSONObject)new JSONParser().parse(body);
-                            String xblToken = (String)jsonObject.get("Token");
-                            System.out.println("xblToken: " + xblToken); // TODO debug
-                            acquireXsts(xblToken);
-                        }
-                        catch (ParseException e)
-                        {
-                            e.printStackTrace();
-                        }
-                    }
-                };
-            }
-            catch (WebException e)
-            {
-                Logger.Error(e.ToString());
-            }
-        }
-
-        private void acquireXsts(String xblToken)
-        {
-            try
-            {
-                Uri uri = new Uri(AuthLinks.XstsAuthLink);
-
-                XstsData data = new()
-                {
-                    Properties = new Dictionary<string, string>()
-                    {
-                        { "SandboxId", "RETAIL" },
-                        { "UserTokens", xblToken }
-                    },
-                    RelyingParty = "rp://api.minecraftservices.com/",
-                    TokenTyp = "JWT"
-                };
-
-                HttpRequest request = HttpRequest.newBuilder(uri)
-                        .header("Content-Type", "application/json")
-                        .header("Accept", "application/json")
-                        .POST(ofJSONData(data)).build();
-
-                HttpClient.newBuilder().build().sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenAccept(resp-> {
-                    if (resp.statusCode() >= 200 && resp.statusCode() < 300)
-                    {
-                        String body = resp.body();
-                        try
-                        {
-                            JSONObject jsonObject = (JSONObject)new JSONParser().parse(body);
-                            String xblXsts = (String)jsonObject.get("Token");
-                            JSONObject claims = (JSONObject)jsonObject.get("DisplayClaims");
-                            JSONArray xui = (JSONArray)claims.get("xui");
-                            String uhs = (String)((JSONObject)xui.get(0)).get("uhs");
-                            System.out.println("xblXsts: " + xblXsts + ", uhs: " + uhs); // TODO debug
-                            acquireMinecraftToken(uhs, xblXsts);
-                        }
-                        catch (ParseException e)
-                        {
-                            e.printStackTrace();
-                        }
-                    }
-                });
-            }
-            catch (URISyntaxException e)
-            {
-                e.printStackTrace();
-            }
-        }
-
-        private void acquireMinecraftToken(String xblUhs, String xblXsts)
-        {
-            try
-            {
-                URI uri = new URI(mcLoginUrl);
-
-                Map<Object, Object> data = Map.of(
-                        "identityToken", "XBL3.0 x=" + xblUhs + ";" + xblXsts
-                );
-
-                HttpRequest request = HttpRequest.newBuilder(uri)
-                        .header("Content-Type", "application/json")
-                        .header("Accept", "application/json")
-                        .POST(ofJSONData(data)).build();
-
-                HttpClient.newBuilder().build().sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenAccept(resp-> {
-                    if (resp.statusCode() >= 200 && resp.statusCode() < 300)
-                    {
-                        String body = resp.body();
-                        try
-                        {
-                            JSONObject jsonObject = (JSONObject)new JSONParser().parse(body);
-                            String mcAccessToken = (String)jsonObject.get("access_token");
-                            System.out.println("mcAccessToken: " + mcAccessToken); // TODO debug
-                            checkMcStore(mcAccessToken);
-                            checkMcProfile(mcAccessToken);
-                        }
-                        catch (ParseException e)
-                        {
-                            e.printStackTrace();
-                        }
-                    }
-                });
-            }
-            catch (URISyntaxException e)
-            {
-                e.printStackTrace();
-            }
-        }
-
-        private void checkMcStore(String mcAccessToken)
-        {
-            try
-            {
-                URI uri = new URI(mcStoreUrl);
-
-                HttpRequest request = HttpRequest.newBuilder(uri)
-                        .header("Authorization", "Bearer " + mcAccessToken)
-                        .GET().build();
-
-                HttpClient.newBuilder().build().sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenAccept(resp-> {
-                    if (resp.statusCode() >= 200 && resp.statusCode() < 300)
-                    {
-                        String body = resp.body();
-                        System.out.println("store: " + body);
-                    }
-                });
-            }
-            catch (URISyntaxException e)
-            {
-                e.printStackTrace();
-            }
-        }
-
-        private void checkMcProfile(String mcAccessToken)
-        {
-            try
-            {
-                URI uri = new URI(mcProfileUrl);
-
-                HttpRequest request = HttpRequest.newBuilder(uri)
-                        .header("Authorization", "Bearer " + mcAccessToken)
-                        .GET().build();
-
-                HttpClient.newBuilder().build().sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenAccept(resp-> {
-                    if (resp.statusCode() >= 200 && resp.statusCode() < 300)
-                    {
-                        String body = resp.body();
-                        try
-                        {
-                            System.out.println("profile:" + body);
-                            JSONObject jsonObject = (JSONObject)new JSONParser().parse(body);
-                            String name = (String)jsonObject.get("name");
-                            String uuid = (String)jsonObject.get("id");
-                            String uuidDashes = uuid.replaceFirst(
-                                    "(\\p{XDigit}{8})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}+)", "$1-$2-$3-$4-$5"
-                            );
-
-                            // hack, not actually working, need to get the right values
-                            Authenticator auth = ()-> new AuthInfo(name, mcAccessToken, UUID.fromString(uuidDashes), Map.of(), "mojang");
-                            new MinecraftStartTask(()->System.out.println("corrupt!"), ()->System.out.println("started!"), auth, minecraftDirectory).start();
-                        }
-                        catch (ParseException e)
-                        {
-                            e.printStackTrace();
-                        }
-                    }
-                    else
-                    {
-                        String body = resp.body();
-                        System.out.println("profile: " + resp.statusCode() + ": " + body);
-                    }
-                });
-            }
-            catch (URISyntaxException e)
-            {
-                e.printStackTrace();
-            }
-        }
-
-        public static HttpRequest.BodyPublisher ofJSONData(Map<Object, Object> data)
-        {
-            return HttpRequest.BodyPublishers.ofString(new JSONObject(data).toJSONString());
-        }
-
-        public static HttpRequest.BodyPublisher ofFormData(Map<Object, Object> data)
-        {
-            StringBuilder builder = new StringBuilder();
-            for (Map.Entry<Object, Object> entry : data.entrySet())
-            {
-                if (builder.length() > 0)
-                {
-                    builder.append("&");
-                }
-                builder.append(URLEncoder.encode(entry.getKey().toString(), StandardCharsets.UTF_8));
-                builder.append("=");
-                builder.append(URLEncoder.encode(entry.getValue().toString(), StandardCharsets.UTF_8));
-            }
-            return HttpRequest.BodyPublishers.ofString(builder.toString());
-        }
+        #endregion
     }
 }
