@@ -10,7 +10,7 @@ Minecraft authentication library contains yggdrasil and the *new* Microsoft Auth
 - :ballot_box_with_check: Authenticate with Xbox Live
 - :ballot_box_with_check: Authenticate with Minecraft
 - :arrows_counterclockwise: Checking Game Ownership
-- :asterisk: Get the profile
+- :record_button: Get the profile
 
 ## How does it work?
 ### Microsoft Authentication method
