@@ -35,7 +35,7 @@ Minecraft authentication library contains yggdrasil and the *new* Microsoft Auth
 > > ```
 
 ### Microsoft Authentication method
-> Check out the [sample WPF project](https://github.com/HunLuxLauncher/Libraries.Auth.Tests) to understand how does it work.
+> Check out the [sample WPF project](https://github.com/HunLuxLauncher/Libraries.Auth.Sample) to understand how does it work.
 
 ### Used sources:
 - [wiki.vg](https://wiki.vg/Microsoft_Authentication_Scheme) 
