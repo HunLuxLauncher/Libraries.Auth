@@ -21,7 +21,7 @@ Minecraft authentication library contains yggdrasil and the *new* Microsoft Auth
 
 ## How does it work?
 ### Yggdrasil Authentication method
-> Find it out yourself, because it will be deprecated after they switch fully to **Microsoft Authentication Scheme**.
+> Find it out yourself, but keep in mind, that it will be deprecated after they switch fully to **Microsoft Authentication Scheme**.
 
 ### Microsoft Authentication method
 > Check out the [sample WPF project](https://github.com/HunLuxLauncher/Libraries.Auth.Tests) to understand how does it work.
