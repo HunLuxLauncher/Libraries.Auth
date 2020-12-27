@@ -21,15 +21,13 @@ Minecraft authentication library contains yggdrasil and the *new* Microsoft Auth
 
 ## How does it work?
 ### Microsoft Authentication method
-> ### Authentication procedure
-> > #### Authenticate with Microsoft #1
-> > - In this part, you will need user interaction to provide their Microsoft account details to OAuth client and then we will handle the rest of the process.
-> 
-> > #### Authenticate with Microsoft #2
-> > - Got our *first* token. :yay:
-> 
-> ### Used sources:
-> > - [wiki.vg](https://wiki.vg/Microsoft_Authentication_Scheme)
-> > - [Calling Xbox Live Services from Your Title Service](http://strauss.hu/download/16)
+> Check out the [sample WPF project](https://github.com/HunLuxLauncher/Libraries.Auth.Tests) to understand how does it work.
+
+### Yggdrasil Authentication method
+> Find it out yourself, because it will be deprecated after they switch fully to **Microsoft Authentication Scheme**.
+
+### Used sources:
+> - [wiki.vg](https://wiki.vg/Microsoft_Authentication_Scheme)
+> - [Calling Xbox Live Services from Your Title Service](http://strauss.hu/download/16)
 
 > A product of [Czompi Software](https://czompisoftware.hu/en/).
