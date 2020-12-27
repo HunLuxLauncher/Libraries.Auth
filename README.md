@@ -9,7 +9,7 @@ Minecraft authentication library contains yggdrasil and the *new* Microsoft Auth
 > ```
 
 ## Current state of development
-### Yggdrasil method
+### Yggdrasil Authentication method
 - 100% done
 
 ### Microsoft Authentication method
@@ -20,11 +20,11 @@ Minecraft authentication library contains yggdrasil and the *new* Microsoft Auth
 - :ballot_box_with_check: Get the profile
 
 ## How does it work?
-### Microsoft Authentication method
-> Check out the [sample WPF project](https://github.com/HunLuxLauncher/Libraries.Auth.Tests) to understand how does it work.
-
 ### Yggdrasil Authentication method
 > Find it out yourself, because it will be deprecated after they switch fully to **Microsoft Authentication Scheme**.
+
+### Microsoft Authentication method
+> Check out the [sample WPF project](https://github.com/HunLuxLauncher/Libraries.Auth.Tests) to understand how does it work.
 
 ### Used sources:
 > - [wiki.vg](https://wiki.vg/Microsoft_Authentication_Scheme)
