@@ -31,36 +31,44 @@ namespace hu.hunluxlauncher.libraries
         #region SendRequest
         public static string SendRequest(Uri uri, RequestMethod method, string user_agent, string content_type, string post,  params string[] additional_headers)
         {
-            HttpWebRequest webRequest = (HttpWebRequest)WebRequest.Create(uri);
-            webRequest.Method = method.ToString();
-            if(!string.IsNullOrEmpty(user_agent)) webRequest.UserAgent = user_agent;
-            if (content_type != null)
+            try
             {
-                webRequest.ContentType = content_type;
-                using (var streamWriter = new StreamWriter(webRequest.GetRequestStream()))
+                HttpWebRequest webRequest = (HttpWebRequest)WebRequest.Create(uri);
+                webRequest.Method = method.ToString();
+                if (!string.IsNullOrEmpty(user_agent)) webRequest.UserAgent = user_agent;
+                if (content_type != null)
                 {
-                    if (post != "")
+                    webRequest.ContentType = content_type;
+                    using (var streamWriter = new StreamWriter(webRequest.GetRequestStream()))
                     {
-                        streamWriter.Write(post);
-                        streamWriter.Flush();
-                        streamWriter.Close();
+                        if (post != "")
+                        {
+                            streamWriter.Write(post);
+                            streamWriter.Flush();
+                            streamWriter.Close();
+                        }
+                    }
+                    webRequest.ContentLength = post.Length;
+                }
+                if (additional_headers.Length > 0 && additional_headers.Length % 2 == 0)
+                {
+                    for (int i = 0; i < additional_headers.Length; i += 2)
+                    {
+                        if (additional_headers[i].ToLower() == "content-type") continue;
+                        webRequest.Headers.Add(additional_headers[i], additional_headers[i + 1]);
                     }
                 }
-                webRequest.ContentLength = post.Length;
-            }
-            if (additional_headers.Length > 0 && additional_headers.Length % 2 == 0)
-            {
-                for (int i = 0; i < additional_headers.Length; i += 2)
-                {
-                    if (additional_headers[i].ToLower() == "content-type") continue;
-                    webRequest.Headers.Add(additional_headers[i], additional_headers[i + 1]);
-                }
-            }
 
-            var webResponse = (HttpWebResponse)webRequest.GetResponse();
-            var streamReader = new StreamReader(webResponse.GetResponseStream());
-            var result = streamReader.ReadToEnd();
-            return result;
+                var webResponse = (HttpWebResponse)webRequest.GetResponse();
+                var streamReader = new StreamReader(webResponse.GetResponseStream());
+                var result = streamReader.ReadToEnd();
+                return result;
+            }
+            catch (WebException ex)
+            {
+                if ((ex.Response as HttpWebResponse).StatusCode == HttpStatusCode.NotFound) throw new EntryPointNotFoundException((ex.Response as HttpWebResponse).ResponseUri.ToString());
+                else throw ex;
+            }
         }
         #endregion
 
