@@ -25,30 +25,6 @@ namespace hu.hunluxlauncher.libraries.auth.microsoft
 
         #region Authenticate with Microsoft
 
-        #region LogoutInit
-        /// <summary>
-        /// Authenticate with Microsoft Part #1<br/>
-        /// This function is the first one that you have to call and you need to pass the return value to the user to be able to log in to their 
-        /// Microsoft account. After you done that, you need to monitor the window/webbrowser that this method's <see cref="Uri"/> is passed to,
-        /// because otherwise you cannot retrieve the <b>authorization_code</b> and without it, you cannot continue the authentication process.
-        /// </summary>
-        /// <param name="request">Leave it <b>null</b> if you'd like to use the default request datas that are present on the official <b>Minecraft Launcher</b> as well.</param>
-        /// <returns>With an <see cref="Uri"/> based on <paramref name="request"/> data. See <seealso cref="AuthorizeRequest"/> for more info.</returns>
-        public Uri LogoutInit(account.AuthorizeRequest logoutRequest = null, account.AuthorizeRequest loginRequest = null)
-        {
-            
-            if (logoutRequest == null)
-            {
-                logoutRequest = new account.AuthorizeRequest
-                {
-                    ClientId = AuthSettings.ClientId,
-                    RedirectUri = AuthSettings.RedirectUri
-                };
-            }
-            return new Uri($"{AuthLinks.LogoutUrl}?{logoutRequest.ToFormRequest<account.AuthorizeRequest>()}");
-        }
-        #endregion
-        
         #region LoginInit
         /// <summary>
         /// Authenticate with Microsoft Part #1<br/>
@@ -71,6 +47,30 @@ namespace hu.hunluxlauncher.libraries.auth.microsoft
                 };
             }
             return new Uri($"{AuthLinks.LoginUrl}?{request.ToFormRequest<account.AuthorizeRequest>()}");
+        }
+        #endregion
+        
+        #region LogoutInit
+        /// <summary>
+        /// Authenticate with Microsoft Part #1<br/>
+        /// This function is the first one that you have to call and you need to pass the return value to the user to be able to log in to their 
+        /// Microsoft account. After you done that, you need to monitor the window/webbrowser that this method's <see cref="Uri"/> is passed to,
+        /// because otherwise you cannot retrieve the <b>authorization_code</b> and without it, you cannot continue the authentication process.
+        /// </summary>
+        /// <param name="request">Leave it <b>null</b> if you'd like to use the default request datas that are present on the official <b>Minecraft Launcher</b> as well.</param>
+        /// <returns>With an <see cref="Uri"/> based on <paramref name="request"/> data. See <seealso cref="AuthorizeRequest"/> for more info.</returns>
+        public Uri LogoutInit(account.AuthorizeRequest logoutRequest = null)
+        {
+            
+            if (logoutRequest == null)
+            {
+                logoutRequest = new account.AuthorizeRequest
+                {
+                    ClientId = AuthSettings.ClientId,
+                    RedirectUri = AuthSettings.RedirectUri
+                };
+            }
+            return new Uri($"{AuthLinks.LogoutUrl}?{logoutRequest.ToFormRequest<account.AuthorizeRequest>()}");
         }
         #endregion
 
@@ -215,5 +215,39 @@ namespace hu.hunluxlauncher.libraries.auth.microsoft
             return response;
         }
         #endregion
+
+        #region Checking game ownership
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="access_token">Use <see cref="minecraft.Authenticate.AccessToken"/> from <see cref="MinecraftAuthenticate(string, string)"/>.</param>
+        public minecraft.GameOwnership CheckingGameOwnership(string access_token)
+        {
+            var responseStr = NetHandler.SendRequest(AuthLinks.McStoreLink, RequestMethod.GET, AuthSettings.UserAgent, null, null, "Authorization", $"Bearer {access_token}");
+            minecraft.GameOwnership response = JsonSerializer.Deserialize<minecraft.GameOwnership>(responseStr);
+            return response;
+        }
+        #endregion
+
+        #region Get the profile
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="access_token">Use <see cref="minecraft.Authenticate.AccessToken"/> from <see cref="MinecraftAuthenticate(string, string)"/>.</param>
+        public minecraft.ProfileInfo GetProfile(string access_token)
+        {
+            try
+            {
+                var responseStr = NetHandler.SendRequest(AuthLinks.McProfileLink, RequestMethod.GET, AuthSettings.UserAgent, null, null, "Authorization", $"Bearer {access_token}");
+                minecraft.ProfileInfo response = JsonSerializer.Deserialize<minecraft.ProfileInfo>(responseStr);
+                return response;
+            }
+            catch (EntryPointNotFoundException)
+            {
+                throw new UnauthorizedAccessException("This account does not own the game.");
+            }
+        }
+        #endregion
+
     }
 }
