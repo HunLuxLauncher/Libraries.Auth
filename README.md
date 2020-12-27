@@ -10,7 +10,12 @@ Minecraft authentication library contains yggdrasil and the *new* Microsoft Auth
 
 ## Current state of development
 ### Yggdrasil Authentication method
-- 100% done
+- :ballot_box_with_check: Authenticate
+- :ballot_box_with_check: Invalidate
+- :ballot_box_with_check: Refresh
+- :ballot_box_with_check: Signout
+- :ballot_box_with_check: Validate
+
 
 ### Microsoft Authentication method
 - :ballot_box_with_check: Authenticate with Microsoft
@@ -22,6 +27,12 @@ Minecraft authentication library contains yggdrasil and the *new* Microsoft Auth
 ## How does it work?
 ### Yggdrasil Authentication method
 > Find it out yourself, but keep in mind, that it will be deprecated after they switch fully to **Microsoft Authentication Scheme**.
+> > To help a bit, here is how to start using the *Yggdrasil Authentication method*:
+> > ```cs
+> > using hu.hunluxlauncher.libraries.auth.yggdrasil;
+> > ...
+> > Authenticator authenticator = new Authenticator(user_agent, client_token);
+> > ```
 
 ### Microsoft Authentication method
 > Check out the [sample WPF project](https://github.com/HunLuxLauncher/Libraries.Auth.Tests) to understand how does it work.
