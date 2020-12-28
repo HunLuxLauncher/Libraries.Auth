@@ -1,21 +1,27 @@
 ﻿using System;
 using System.Net;
+using System.Text.Json.Serialization;
 
 namespace hu.hunluxlauncher.libraries.auth.yggdrasil
 {
     public class ErrorResult
     {
-        public HttpStatusCode StatusCode;
-        public string Error;
-        public string ErrorMessage;
-        public string Cause;
+        
+        /*[JsonPropertyName("statusCode")] 
+        public HttpStatusCode StatusCode { get; set; }*/
+        [JsonPropertyName("error")]
+        public string Error { get; set; }
+        [JsonPropertyName("errorMessage")]
+        public string ErrorMessage { get; set; }
+        [JsonPropertyName("cause")]
+        public string Cause { get; set; }
 
-        public ErrorResult(HttpStatusCode statusCode, string error, string errorMessage, string cause)
+        /*public ErrorResult(HttpStatusCode statusCode, string error, string errorMessage, string cause)
         {
             StatusCode = statusCode;
             Error = error;
             ErrorMessage = errorMessage;
             Cause = cause;
-        }
+        }*/
     }
 }

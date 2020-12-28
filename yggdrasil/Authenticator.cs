@@ -3,6 +3,8 @@ using System.Text;
 using System.Net;
 using System.Net.Http;
 using System.Text.Json;
+using hu.czompisoftware.libraries.general;
+using System.IO;
 
 namespace hu.hunluxlauncher.libraries.auth.yggdrasil
 {
@@ -22,6 +24,14 @@ namespace hu.hunluxlauncher.libraries.auth.yggdrasil
         }
 
         public Authenticator(string user_agent) : this(user_agent, Guid.NewGuid()) { }
+
+        public Authenticator(Guid clientToken)
+        {
+            UserAgent = "HunLuxLauncher.UNDEFINED/0.0.0";
+            ClientToken = clientToken;
+        }
+
+        public Authenticator() : this("HunLuxLauncher.UNDEFINED/0.0.0", Guid.NewGuid()) { }
 
         public Guid GetClientToken()
         {
@@ -45,7 +55,17 @@ namespace hu.hunluxlauncher.libraries.auth.yggdrasil
                 RequestUser = true
             };
 
-            AuthenticationResult result = JsonSerializer.Deserialize<AuthenticationResult>(NetHandler.SendPostRequest(new Uri(AUTH_SERVER + "/authenticate"), UserAgent, "application/json", JsonSerializer.Serialize(request)));
+            AuthenticationResult result = null;
+            try
+            {
+                var resultStr = NetHandler.SendPostRequest(new Uri(AUTH_SERVER + "/authenticate"), UserAgent, "application/json", JsonSerializer.Serialize(request));
+                result = JsonSerializer.Deserialize<AuthenticationResult>(resultStr);
+            }
+            catch (WebException ex)
+            {
+                var response = new StreamReader((ex.Response as HttpWebResponse).GetResponseStream()).ReadToEnd();
+                Logger.Error($"{response}");
+            }
 
             return result;
         }

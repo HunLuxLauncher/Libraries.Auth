@@ -7,11 +7,11 @@ namespace hu.hunluxlauncher.libraries.auth.yggdrasil
     {
         public string NewAccessToken;
 
-        public RefreshResult(string newAccessToken) : base(HttpStatusCode.OK, null, null, null)
+        /*public RefreshResult(string newAccessToken) : base(HttpStatusCode.OK, null, null, null)
         {
             NewAccessToken = newAccessToken;
         }
 
-        public RefreshResult(HttpStatusCode statusCode, string error, string errorMessage, string cause) : base(statusCode, error, errorMessage, cause) { }
+        public RefreshResult(HttpStatusCode statusCode, string error, string errorMessage, string cause) : base(statusCode, error, errorMessage, cause) { }*/
     }
 }
