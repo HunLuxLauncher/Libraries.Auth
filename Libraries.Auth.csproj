@@ -7,6 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="CzomPack" Version="2.3.1.5" />
+    <PackageReference Include="CzomPack" Version="2.3.1.8" />
   </ItemGroup>
 </Project>
