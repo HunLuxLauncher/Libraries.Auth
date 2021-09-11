@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace hu.hunluxlauncher.libraries.auth
+namespace Libraries.Auth
 {
     public class AuthenticationElement : ErrorResponse
     {

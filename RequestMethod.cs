@@ -1,4 +1,4 @@
-﻿namespace hu.hunluxlauncher.libraries
+﻿namespace Libraries.Auth
 {
     public enum RequestMethod
     {

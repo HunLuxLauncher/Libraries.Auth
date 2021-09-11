@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Text.Json.Serialization;
 
-namespace hu.hunluxlauncher.libraries.auth
+namespace Libraries.Auth
 {
     public class ErrorResponse
     {

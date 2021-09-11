@@ -1,12 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>netcoreapp3.1;net5.0</TargetFrameworks>
-		<RootNamespace>hu.hunluxlauncher.libraries.auth</RootNamespace>
-		<LangVersion>9.0</LangVersion>
+		<TargetFrameworks>netcoreapp3.1;net5.0;net6.0</TargetFrameworks>
+		<RootNamespace>Libraries.Auth</RootNamespace>
+		<LangVersion>10.0</LangVersion>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="CzomPack" Version="2.3.1.8" />
+		<PackageReference Include="CzomPack" Version="3.0.0" />
 	</ItemGroup>
 </Project>

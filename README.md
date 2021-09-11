@@ -29,7 +29,7 @@ Minecraft authentication library contains yggdrasil and the *new* Microsoft Auth
 > Find it out yourself, but keep in mind, that it will be deprecated after they switch fully to **Microsoft Authentication Scheme**.
 > > To help a bit, here is how to start using the *Yggdrasil Authentication method*:
 > > ```cs
-> > using hu.hunluxlauncher.libraries.auth.yggdrasil;
+> > using HunLuxLauncher.Libraries.auth.yggdrasil;
 > > ...
 > > Authenticator authenticator = new Authenticator(user_agent, client_token);
 > > ```

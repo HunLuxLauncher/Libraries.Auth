@@ -2,7 +2,7 @@
 using System.IO;
 using System.Net;
 
-namespace hu.hunluxlauncher.libraries
+namespace Libraries.Auth
 {
     public class NetHandler
     {
